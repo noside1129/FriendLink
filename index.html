@@ -1,0 +1,295 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FriendLink - Your World of Connections</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f5f7fb;color:#202b40}
+header{background:#fff;padding:17px 6%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5e9f2}
+.logo{font-size:24px;font-weight:bold;color:#4169e1}
+button{border:0;border-radius:9px;padding:11px 16px;background:#4169e1;color:white;cursor:pointer;font-size:14px}
+button:hover{opacity:.88}
+.secondary{background:#e9edff;color:#3658c7}
+header button{margin-left:7px}
+.container{max-width:1100px;margin:30px auto;padding:0 18px}
+.hero{background:linear-gradient(120deg,#4169e1,#7755d9);color:white;padding:30px;border-radius:18px;margin-bottom:24px}
+.hero h1{margin-top:0;font-size:32px}
+.hero p{line-height:1.6;max-width:600px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:25px}
+.stat,.panel{background:white;border:1px solid #e8ebf3;border-radius:14px;padding:20px}
+.stat strong{font-size:27px;display:block;margin-bottom:7px;color:#4169e1}
+.layout{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+h2{font-size:19px;margin-top:0}
+input{width:100%;padding:12px;border:1px solid #d9dfeb;border-radius:9px;margin:8px 0 12px;font-size:15px}
+.person{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #edf0f6}
+.person:last-child{border-bottom:0}
+.avatar{width:44px;height:44px;flex-shrink:0;border-radius:50%;background:#e6ebff;color:#3658c7;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:17px}
+.person-info{flex:1;min-width:0}
+.person-info strong{display:block}
+.person-info small{color:#788398;display:block;margin-top:5px}
+.person button{padding:9px 11px}
+.network{display:flex;align-items:center;flex-direction:column;gap:8px;padding:12px 0}
+.node{padding:12px 18px;border:2px solid #cbd5ff;border-radius:12px;background:#f3f5ff;text-align:center;font-weight:bold}
+.line{height:22px;width:2px;background:#aab8ed}
+.children{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.children .node{font-size:13px;padding:10px}
+.note{color:#758096;font-size:13px;line-height:1.6}
+.empty{color:#7d879a;padding:15px 0}
+footer{text-align:center;color:#7d879a;padding:30px 15px;font-size:13px}
+#message{margin:10px 0;color:#276749;font-size:14px}
+@media(max-width:650px){
+ header{padding:15px;flex-wrap:wrap;gap:12px}
+ .logo{font-size:21px}
+ header button{margin-left:0}
+ .hero{padding:23px}
+ .hero h1{font-size:26px}
+ .stats{gap:8px}
+ .stat{padding:12px}
+ .stat strong{font-size:22px}
+ .stat span{font-size:12px}
+ .layout{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🔗 FriendLink</div>
+  <div>
+    <button class="secondary" onclick="showProfile()">My Profile</button>
+    <button onclick="shareProfile()">Invite Friends</button>
+  </div>
+</header>
+
+<main class="container">
+  <section class="hero">
+    <h1>Your friends. Their friends. Your world.</h1>
+    <p>Discover how people are connected. Build your personal network,
+       explore mutual friends, and find connections beyond your circle.</p>
+    <button onclick="shareProfile()">+ Invite a Friend</button>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><strong id="friendCount">0</strong><span>My Friends</span></div>
+    <div class="stat"><strong id="networkCount">0</strong><span>People in My Network</span></div>
+    <div class="stat"><strong id="requestCount">0</strong><span>Friend Requests</span></div>
+  </section>
+
+  <section class="layout">
+    <div class="panel">
+      <h2>👤 My Profile</h2>
+      <label for="name">Your name</label>
+      <input id="name" maxlength="50" placeholder="Enter your name">
+      <label for="username">Username</label>
+      <input id="username" maxlength="30" placeholder="Choose a username">
+      <button onclick="saveProfile()">Save Profile</button>
+      <p id="message"></p>
+      <p class="note">This demo saves your profile in this browser only.</p>
+    </div>
+
+    <div class="panel">
+      <h2>➕ Add a Friend</h2>
+      <label for="friendName">Friend's name</label>
+      <input id="friendName" maxlength="50" placeholder="Enter friend's name">
+      <label for="friendUsername">Friend's username (optional)</label>
+      <input id="friendUsername" maxlength="30" placeholder="e.g. anu123">
+      <button onclick="addFriend()">Add Friend</button>
+      <p class="note">Demo mode: this adds a sample connection locally.
+      Real users will need to accept friend requests in the online version.</p>
+    </div>
+
+    <div class="panel">
+      <h2>👥 My Friends</h2>
+      <div id="friendsList"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🌐 My Network</h2>
+      <div id="networkMap"></div>
+      <p class="note">Explore the people connected through your friends.</p>
+    </div>
+  </section>
+</main>
+
+<footer>FriendLink · Connecting people, one friendship at a time</footer>
+
+<script>
+const KEY = "friendlink_demo_v1";
+
+function loadData(){
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY));
+    if(saved && Array.isArray(saved.friends)) return saved;
+  } catch(e) {}
+  return {name:"", username:"", friends:[]};
+}
+
+let data = loadData();
+
+function persist(){
+  localStorage.setItem(KEY, JSON.stringify(data));
+}
+
+function escapeHTML(value){
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;",
+    '"':"&quot;", "'":"&#39;"
+  })[c]);
+}
+
+function initials(name){
+  return name.trim().split(/\s+/).slice(0,2)
+    .map(s => s[0] || "").join("").toUpperCase();
+}
+
+function render(){
+  document.getElementById("name").value = data.name;
+  document.getElementById("username").value = data.username;
+  document.getElementById("friendCount").textContent = data.friends.length;
+
+  const network = new Set();
+  data.friends.forEach(f => {
+    network.add(f.username || f.name);
+    (f.friends || []).forEach(n => network.add(n));
+  });
+  document.getElementById("networkCount").textContent =
+    network.size + (data.name ? 1 : 0);
+  document.getElementById("requestCount").textContent = "0";
+
+  const list = document.getElementById("friendsList");
+  if(!data.friends.length){
+    list.innerHTML = '<p class="empty">No friends yet. Add your first friend!</p>';
+  } else {
+    list.innerHTML = data.friends.map((f,i) => `
+      <div class="person">
+        <div class="avatar">${escapeHTML(initials(f.name))}</div>
+        <div class="person-info">
+          <strong>${escapeHTML(f.name)}</strong>
+          <small>${f.username ? "@"+escapeHTML(f.username) : "Friend"}</small>
+        </div>
+        <button class="secondary" onclick="viewFriend(${i})">View</button>
+        <button class="secondary" onclick="removeFriend(${i})">×</button>
+      </div>
+    `).join("");
+  }
+
+  const map = document.getElementById("networkMap");
+  if(!data.name){
+    map.innerHTML = '<p class="empty">Save your profile to start.</p>';
+    return;
+  }
+
+  map.innerHTML = `
+    <div class="network">
+      <div class="node">👤 ${escapeHTML(data.name)}<br>
+        <small>Me</small></div>
+      ${data.friends.length ? '<div class="line"></div>' : ''}
+      <div class="children">
+        ${data.friends.map(f => `
+          <div>
+            <div class="node">${escapeHTML(f.name)}</div>
+            ${(f.friends || []).map(n => `
+              <div class="line" style="margin:auto"></div>
+              <div class="node" style="margin-top:6px">${escapeHTML(n)}</div>
+            `).join("")}
+          </div>
+        `).join("")}
+      </div>
+      ${data.friends.length ? '' : '<p class="empty">Add friends to grow your network.</p>'}
+    </div>`;
+}
+
+function saveProfile(){
+  const name = document.getElementById("name").value.trim();
+  const username = document.getElementById("username").value.trim()
+    .replace(/^@/,"");
+
+  if(!name){
+    alert("Please enter your name.");
+    return;
+  }
+  if(username && !/^[a-zA-Z0-9_]+$/.test(username)){
+    alert("Username can contain only letters, numbers and underscores.");
+    return;
+  }
+
+  data.name = name;
+  data.username = username;
+  persist();
+  document.getElementById("message").textContent = "Profile saved!";
+  render();
+}
+
+function addFriend(){
+  const name = document.getElementById("friendName").value.trim();
+  const username = document.getElementById("friendUsername").value.trim()
+    .replace(/^@/,"");
+
+  if(!data.name){
+    alert("Please save your own profile first.");
+    return;
+  }
+  if(!name){
+    alert("Enter your friend's name.");
+    return;
+  }
+  if(data.friends.some(f =>
+    f.name.toLowerCase() === name.toLowerCase())){
+    alert("This friend is already in your list.");
+    return;
+  }
+
+  data.friends.push({name, username, friends:[]});
+  document.getElementById("friendName").value = "";
+  document.getElementById("friendUsername").value = "";
+  persist();
+  render();
+}
+
+function viewFriend(index){
+  const f = data.friends[index];
+  const connections = f.friends || [];
+  const result = prompt(
+    f.name + "'s connections (demo)\nEnter names separated by commas to add sample connections:",
+    connections.join(", ")
+  );
+  if(result === null) return;
+  f.friends = [...new Set(result.split(",")
+    .map(n => n.trim()).filter(Boolean))];
+  persist();
+  render();
+}
+
+function removeFriend(index){
+  if(!confirm("Remove this friend from your demo list?")) return;
+  data.friends.splice(index,1);
+  persist();
+  render();
+}
+
+function showProfile(){
+  document.getElementById("name").focus();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function shareProfile(){
+  const link = location.href.split("#")[0];
+  const text = "Join me on FriendLink! " + link;
+  if(navigator.share){
+    navigator.share({title:"FriendLink", text}).catch(()=>{});
+  } else if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text)
+      .then(()=>alert("Invitation link copied!"))
+      .catch(()=>prompt("Copy your invitation:",text));
+  } else {
+    prompt("Copy your invitation link:",text);
+  }
+}
+
+render();
+</script>
+</body>
+</html>
